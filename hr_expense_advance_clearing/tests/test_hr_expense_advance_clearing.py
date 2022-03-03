@@ -6,7 +6,7 @@ from odoo.tests import common
 from odoo.tests.common import Form
 
 
-class TestHrExpenseAdvanceClearing(common.SavepointCase):
+class TestHrExpenseAdvanceClearing(common.TransactionCase):
     @classmethod
     def setUpClass(cls):
         super(TestHrExpenseAdvanceClearing, cls).setUpClass()
