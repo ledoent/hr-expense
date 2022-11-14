@@ -178,15 +178,14 @@
                     string="Clear Advance"
                     class="oe_highlight"
                     attrs="{'invisible': ['|', '|', ('advance', '=', False), ('state', '!=', 'done'), ('clearing_residual', '=', 0.0)]}"
-                    groups="account.group_account_manager"
                 />
                 <button
                     name="%(hr_expense.hr_expense_sheet_register_payment_wizard_action)d"
                     type="action"
                     string="Return Advance"
                     attrs="{'invisible': ['|', '|', ('advance', '=', False), ('state', '!=', 'done'), ('clearing_residual', '=', 0.0)]}"
-                    context="{'hr_return_advance': True, 'partner_id': address_id}"
-                    groups="account.group_account_manager"
+                    context="{'hr_return_advance': True}"
+                    groups="account.group_account_user"
                 />
             </field>
             <h1 position="after">
