@@ -238,10 +238,18 @@
                 >{'readonly': [('id', '=', False), ('advance_sheet_id', '!=', False)]}</attribute>
                 <attribute name="force_save">True</attribute>
             </xpath>
-            <xpath expr="//notebook/page[@name='expenses']" position="after">
-                <page
-                    name="clearing"
-                    string="Clearing"
+            <xpath
+                expr="//field[@name='expense_line_ids']/tree/field[@name='unit_amount']"
+                position="attributes"
+            >
+                <attribute name="force_save">True</attribute>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button
+                    name="action_open_clearings"
+                    class="oe_stat_button"
+                    icon="fa-file-text-o"
+                    type="object"
                     attrs="{'invisible': [('advance', '=', False)]}"
                 >
                     <field name="clearing_sheet_ids" />
