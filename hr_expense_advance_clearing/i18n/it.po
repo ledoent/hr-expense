@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"PO-Revision-Date: 2023-07-04 09:09+0000\n"
+"PO-Revision-Date: 2023-11-30 15:35+0000\n"
 "Last-Translator: mymage <stefano.consolaro@mymage.it>\n"
 "Language-Team: none\n"
 "Language: it\n"
@@ -24,7 +24,7 @@ msgid ""
 "Note: pending amount clearing is {}{}"
 msgstr ""
 "\n"
-"Nota: il valore da saldare in attesa è {}{}"
+"Nota: valore liquidazione in attesa è %(symbol)s%(amount)s"
 
 #. module: hr_expense_advance_clearing
 #: model:ir.model.fields,field_description:hr_expense_advance_clearing.field_hr_employee__advance_count
@@ -40,8 +40,8 @@ msgid ""
 "A remaining advance return of {} {} with the reference {} related to your "
 "expense {} has been made."
 msgstr ""
-"È stato eseguito un rimborso anticipo residuo di {} {} con riferimento {} "
-"relativo alla sua spesa {}."
+"È stato fatto un residuo reso anticipo di %(amount)s %(symbol)s con "
+"riferimento %(ref)s relativo alla sua spesa %(name)s."
 
 #. module: hr_expense_advance_clearing
 #: model:ir.model.fields,field_description:hr_expense_advance_clearing.field_account_payment__advance_id
@@ -374,5 +374,33 @@ msgstr ""
 #. module: hr_expense_advance_clearing
 #: code:addons/hr_expense_advance_clearing/wizard/account_payment_register.py:0
 #, python-format
-msgid "You cannot return advance more than actual remaining ({}{}){}"
-msgstr "Non si può rimborsare un anticipo oltre il restante effettivo ({}{}){}"
+msgid ""
+"You cannot return advance more than actual remaining (%(symbol)s"
+"%(amount)s)%(more_info)s"
+msgstr ""
+"Non è possibile restituire un anticipo superiore al rimanente effettivo "
+"(%(symbol)s%(amount)s)%(more_info)s"
+
+#, python-format
+#~ msgid ""
+#~ "\n"
+#~ "Note: pending amount clearing is {}{}"
+#~ msgstr ""
+#~ "\n"
+#~ "Nota: il valore da saldare in attesa è {}{}"
+
+#, python-format
+#~ msgid ""
+#~ "A remaining advance return of {} {} with the reference {} related to your "
+#~ "expense {} has been made."
+#~ msgstr ""
+#~ "È stato eseguito un rimborso anticipo residuo di {} {} con riferimento {} "
+#~ "relativo alla sua spesa {}."
+
+#~ msgid "Units"
+#~ msgstr "Unità"
+
+#, python-format
+#~ msgid "You cannot return advance more than actual remaining ({}{}){}"
+#~ msgstr ""
+#~ "Non si può rimborsare un anticipo oltre il restante effettivo ({}{}){}"
