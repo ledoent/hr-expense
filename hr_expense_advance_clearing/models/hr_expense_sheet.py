@@ -60,6 +60,24 @@ class HrExpenseSheet(models.Model):
         if advance_lines and len(advance_lines) != len(self.expense_line_ids):
             raise ValidationError(_("Advance must contain only advance expense line"))
 
+    @api.depends("account_move_id.payment_state")
+    def _compute_payment_state(self):
+        """After clear advance.
+        if amount residual is zero, payment state will change to 'paid'
+        """
+        res = super()._compute_payment_state()
+        for sheet in self:
+            if (
+                sheet.advance_sheet_id
+                and sheet.account_move_id.state == "posted"
+                and not sheet.amount_residual
+            ):
+                sheet.payment_state = "paid"
+        return res
+
+    def _get_product_advance(self):
+        return self.env.ref("hr_expense_advance_clearing.product_emp_advance", False)
+
     @api.depends("account_move_id.line_ids.amount_residual")
     def _compute_clearing_residual(self):
         emp_advance = self.env.ref(
