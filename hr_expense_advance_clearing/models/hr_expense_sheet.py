@@ -1,7 +1,9 @@
 # Copyright 2019 Kitti Upariphutthiphong <kittiu@ecosoft.co.th>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
-from odoo import _, api, fields, models
+import ast
+
+from odoo import Command, api, fields, models
 from odoo.exceptions import ValidationError
 from odoo.tools.safe_eval import safe_eval
 
@@ -55,10 +57,12 @@ class HrExpenseSheet(models.Model):
         advance_lines = self.expense_line_ids.filtered("advance")
         if self.advance_sheet_id and advance_lines:
             raise ValidationError(
-                _("Advance clearing must not contain any advance expense line")
+                self.env._("Advance clearing must not contain any advance expense line")
             )
         if advance_lines and len(advance_lines) != len(self.expense_line_ids):
-            raise ValidationError(_("Advance must contain only advance expense line"))
+            raise ValidationError(
+                self.env._("Advance must contain only advance expense line")
+            )
 
     @api.depends("account_move_id.payment_state")
     def _compute_payment_state(self):
@@ -197,3 +201,33 @@ class HrExpenseSheet(models.Model):
             for k, v in clearing_dict.items()
         }
         return clearing_dict
+
+    def action_open_clearings(self):
+        self.ensure_one()
+        return {
+            "name": self.env._("Clearing Sheets"),
+            "type": "ir.actions.act_window",
+            "res_model": "hr.expense.sheet",
+            "view_mode": "list,form",
+            "domain": [("id", "in", self.clearing_sheet_ids.ids)],
+        }
+
+    def action_open_payment_return(self):
+        self.ensure_one()
+        return {
+            "name": self.env._("Payment Return"),
+            "type": "ir.actions.act_window",
+            "res_model": "account.payment",
+            "view_mode": "list,form",
+            "domain": [("id", "in", self.payment_return_ids.ids)],
+        }
+
+    def action_register_payment(self):
+        action = super().action_register_payment()
+        if self.env.context.get("hr_return_advance"):
+            action["context"].update(
+                {
+                    "clearing_sheet_ids": self.clearing_sheet_ids.ids,
+                }
+            )
+        return action
