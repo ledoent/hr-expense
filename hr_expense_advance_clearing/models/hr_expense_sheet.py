@@ -130,9 +130,125 @@ class HrExpenseSheet(models.Model):
             )
             adv_move_lines.with_context(ctx).reconcile()
             # Update state on clearing advance when advance residual > total amount
-            if sheet.advance_sheet_id and advance_residual != -1:
-                sheet.write({"state": "done"})
+            if advance_residual != -1:
+                sheet.write(
+                    {
+                        "state": "done",
+                    }
+                )
+            # Update amount residual and state when advance residual < total amount
+            else:
+                sheet.write(
+                    {
+                        "state": "post",
+                        "payment_state": "not_paid",
+                        "amount_residual": sheet.total_amount
+                        - amount_residual_bf_reconcile,
+                    }
+                )
         return res
+
+    def _get_move_line_vals(self):
+        self.ensure_one()
+        move_line_vals = []
+        advance_to_clear = self.advance_sheet_residual
+        emp_advance = self._get_product_advance()
+        account_advance = emp_advance.property_account_expense_id
+        for expense in self.expense_line_ids:
+            move_line_name = (
+                f"{expense.employee_id.name}: {expense.name.splitlines()[0][:64]}"
+            )
+            partner_id = expense.employee_id.sudo().work_contact_id.id
+
+            total_amount = -expense.total_amount
+            total_amount_currency = -expense.total_amount_currency
+
+            # Source move line
+            move_line_src = expense._get_move_line_src(move_line_name, partner_id)
+            move_line_values = [move_line_src]
+
+            # Destination move line
+            move_line_dst = expense._get_move_line_dst(
+                move_line_name,
+                partner_id,
+                total_amount,
+                total_amount_currency,
+                account_advance,
+            )
+
+            # Check clearing > advance, it will split line
+            credit = move_line_dst["credit"]
+            # cr payable -> cr advance
+            remain_payable = 0.0
+            payable_move_line = []
+            rounding = expense.currency_id.rounding
+            if (
+                float_compare(
+                    credit,
+                    advance_to_clear,
+                    precision_rounding=rounding,
+                )
+                == 1
+            ):
+                remain_payable = credit - advance_to_clear
+                move_line_dst.update(
+                    {"credit": advance_to_clear, "amount_currency": -advance_to_clear}
+                )
+                advance_to_clear = 0.0
+                # extra payable line
+                account_dest = expense.sheet_id._get_expense_account_destination()
+                payable_move_line = move_line_dst.copy()
+                payable_move_line.update(
+                    {
+                        "credit": remain_payable,
+                        "amount_currency": -remain_payable,
+                        "account_id": account_dest,
+                    }
+                )
+            else:
+                advance_to_clear -= credit  # Reduce remaining advance
+
+            # Add destination first (if credit is not zero)
+            if not float_is_zero(move_line_dst["credit"], precision_rounding=rounding):
+                move_line_values.append(move_line_dst)
+            if payable_move_line:
+                move_line_values.append(payable_move_line)
+            move_line_vals.extend(move_line_values)
+        return move_line_vals
+
+    def _prepare_bills_vals(self):
+        """create journal entry instead of bills when clearing document"""
+        self.ensure_one()
+        res = super()._prepare_bills_vals()
+        if self.advance_sheet_id and self.payment_mode == "own_account":
+            # Advance Sheets with no residual left
+            if self.advance_sheet_residual <= 0.0:
+                raise ValidationError(
+                    self.env._(
+                        "Advance: %(name)s has no amount to clear", name=self.name
+                    )
+                )
+            res.update(
+                {
+                    "move_type": "entry",
+                    "line_ids": [
+                        Command.create(vals) for vals in self._get_move_line_vals()
+                    ],
+                }
+            )
+        return res
+
+    def _check_can_approve(self):
+        """Check advance residual before approval"""
+        for sheet in self.filtered("advance_sheet_id"):
+            if sheet.advance_sheet_residual <= 0.0:
+                raise ValidationError(
+                    self.env._(
+                        "Advance: %(name)s has no amount to clear",
+                        name=sheet.advance_sheet_id.name,
+                    )
+                )
+        return super()._check_can_approve()
 
     def open_clear_advance(self):
         self.ensure_one()
