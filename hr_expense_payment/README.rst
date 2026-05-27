@@ -1,3 +1,7 @@
+.. image:: https://odoo-community.org/readme-banner-image
+   :target: https://odoo-community.org/get-involved?utm_source=readme
+   :alt: Odoo Community Association
+
 ==================
 HR Expense Payment
 ==================
@@ -13,23 +17,35 @@ HR Expense Payment
 .. |badge1| image:: https://img.shields.io/badge/maturity-Beta-yellow.png
     :target: https://odoo-community.org/page/development-status
     :alt: Beta
-.. |badge2| image:: https://img.shields.io/badge/licence-AGPL--3-blue.png
+.. |badge2| image:: https://img.shields.io/badge/license-AGPL--3-blue.png
     :target: http://www.gnu.org/licenses/agpl-3.0-standalone.html
     :alt: License: AGPL-3
 .. |badge3| image:: https://img.shields.io/badge/github-OCA%2Fhr--expense-lightgray.png?logo=github
-    :target: https://github.com/OCA/hr-expense/tree/18.0/hr_expense_payment
+    :target: https://github.com/OCA/hr-expense/tree/19.0/hr_expense_payment
     :alt: OCA/hr-expense
 .. |badge4| image:: https://img.shields.io/badge/weblate-Translate%20me-F47D42.png
-    :target: https://translation.odoo-community.org/projects/hr-expense-18-0/hr-expense-18-0-hr_expense_payment
+    :target: https://translation.odoo-community.org/projects/hr-expense-19-0/hr-expense-19-0-hr_expense_payment
     :alt: Translate me on Weblate
 .. |badge5| image:: https://img.shields.io/badge/runboat-Try%20me-875A7B.png
-    :target: https://runboat.odoo-community.org/builds?repo=OCA/hr-expense&target_branch=18.0
+    :target: https://runboat.odoo-community.org/builds?repo=OCA/hr-expense&target_branch=19.0
     :alt: Try me on Runboat
 
 |badge1| |badge2| |badge3| |badge4| |badge5|
 
-This module allow payment link to expense. After you register payment on
-expense sheet, it will link between expense sheet and payment.
+This module records a bidirectional link between each ``hr.expense``
+record and the ``account.payment`` records that paid it (via
+``hr.expense.payment_ids`` and ``account.payment.expense_ids``).
+
+When a user clicks **Register Payment** on a posted employee-paid
+expense (``payment_mode='own_account'``), the resulting payment
+back-links to the source expense. A ``post_init_hook`` backfills the
+link for payments that predate the module install by walking
+reconciliation chains.
+
+19.0 note: Odoo core's ``hr.expense.action_pay()`` already exists and
+launches the standard register-payment wizard. This module *adds the
+back-link* — core doesn't track which payment(s) paid which expense
+beyond the implicit reconciliation graph.
 
 **Table of contents**
 
@@ -42,7 +58,7 @@ Bug Tracker
 Bugs are tracked on `GitHub Issues <https://github.com/OCA/hr-expense/issues>`_.
 In case of trouble, please check there if your issue has already been reported.
 If you spotted it first, help us to smash it by providing a detailed and welcomed
-`feedback <https://github.com/OCA/hr-expense/issues/new?body=module:%20hr_expense_payment%0Aversion:%2018.0%0A%0A**Steps%20to%20reproduce**%0A-%20...%0A%0A**Current%20behavior**%0A%0A**Expected%20behavior**>`_.
+`feedback <https://github.com/OCA/hr-expense/issues/new?body=module:%20hr_expense_payment%0Aversion:%2019.0%0A%0A**Steps%20to%20reproduce**%0A-%20...%0A%0A**Current%20behavior**%0A%0A**Expected%20behavior**>`_.
 
 Do not contact contributors directly about support or help with technical issues.
 
@@ -77,6 +93,14 @@ OCA, or the Odoo Community Association, is a nonprofit organization whose
 mission is to support the collaborative development of Odoo features and
 promote its widespread use.
 
-This module is part of the `OCA/hr-expense <https://github.com/OCA/hr-expense/tree/18.0/hr_expense_payment>`_ project on GitHub.
+.. |maintainer-dnplkndll| image:: https://github.com/dnplkndll.png?size=40px
+    :target: https://github.com/dnplkndll
+    :alt: dnplkndll
+
+Current `maintainer <https://odoo-community.org/page/maintainer-role>`__:
+
+|maintainer-dnplkndll| 
+
+This module is part of the `OCA/hr-expense <https://github.com/OCA/hr-expense/tree/19.0/hr_expense_payment>`_ project on GitHub.
 
 You are welcome to contribute. To learn how please visit https://odoo-community.org/page/Contribute.
