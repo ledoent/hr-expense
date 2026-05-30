@@ -1,4 +1,5 @@
 # Copyright 2022 Ecosoft Co., Ltd. (https://ecosoft.co.th)
+# Copyright 2026 Ledo <https://ledoweb.com>
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
 from odoo import models
@@ -9,17 +10,28 @@ class AccountMove(models.Model):
     _inherit = "account.move"
 
     def _check_hr_advance_move_reconciled(self):
-        """Check if the advance move lines already cleard/returned"""
-        av_moves = self.filtered("line_ids.expense_id.sheet_id.advance")
-        emp_advance = self.env.ref("hr_expense_advance_clearing.product_emp_advance")
+        """Refuse to draft/cancel/reverse a move whose advance line is
+        already reconciled with a clearing or return — user must undo the
+        downstream reconciliation first."""
+        av_moves = self.filtered(
+            lambda m: any(
+                line.expense_id.expense_type == "advance" for line in m.line_ids
+            )
+        )
+        emp_advance = self.env.ref(
+            "hr_expense_advance_clearing.product_emp_advance", False
+        )
+        if not emp_advance:
+            return
         reconciled_av_move_lines = av_moves.mapped("line_ids").filtered(
-            lambda l: l.product_id == emp_advance and l.matching_number
+            lambda line: line.product_id == emp_advance and line.matching_number
         )
         if reconciled_av_move_lines:
             raise UserError(
                 self.env._(
-                    "This operation is not allowed as some advance amount was already "
-                    "cleared/returned.\nPlease cancel those documents first."
+                    "This operation is not allowed as some advance amount was "
+                    "already cleared/returned.\nPlease cancel those documents "
+                    "first."
                 )
             )
 
@@ -37,24 +49,9 @@ class AccountMove(models.Model):
             default_values_list=default_values_list, cancel=cancel
         )
 
-    @api.depends(
-        "line_ids.matched_debit_ids.debit_move_id.move_id.payment_id.is_matched",
-        "line_ids.matched_debit_ids.debit_move_id.move_id.line_ids.amount_residual",
-        "line_ids.matched_debit_ids.debit_move_id.move_id.line_ids.amount_residual_currency",
-        "line_ids.matched_credit_ids.credit_move_id.move_id.payment_id.is_matched",
-        "line_ids.matched_credit_ids.credit_move_id.move_id.line_ids.amount_residual",
-        "line_ids.matched_credit_ids.credit_move_id.move_id.line_ids.amount_residual_currency",
-        "line_ids.balance",
-        "line_ids.currency_id",
-        "line_ids.amount_currency",
-        "line_ids.amount_residual",
-        "line_ids.amount_residual_currency",
-        "line_ids.payment_id.state",
-        "line_ids.full_reconcile_id",
-        "state",
-    )
     def _compute_amount(self):
-        """Compute amount residual for advance clearing case."""
+        """Mirror 18.0: for a clearing expense's move, the receivable/
+        payable residual reflects only the unreconciled portion."""
         res = super()._compute_amount()
         for move in self:
             total_residual = 0.0
@@ -62,18 +59,25 @@ class AccountMove(models.Model):
             for line in move.line_ids:
                 if line.account_type not in ("asset_receivable", "liability_payable"):
                     continue
-                # Line residual amount.
-                clearing = line.expense_id.sheet_id.filtered(
-                    lambda sheet: sheet.advance_sheet_id
-                )
+                # Line residual amount on a clearing expense.
+                clearing = line.expense_id.filtered("clearing_advance_id")
                 if clearing:
-                    # Residual amount.
                     total_residual += line.amount_residual
                     total_residual_currency += line.amount_residual_currency
-
-            # Update amount residual for case clearing
             if total_residual and total_residual_currency:
                 sign = move.direction_sign
                 move.amount_residual = -sign * total_residual
                 move.amount_residual_signed = total_residual_currency
         return res
+
+    def action_force_register_payment(self):
+        """Core blocks Register Payment on move_type='entry'. When the move
+        belongs to a clearing expense whose total exceeds the advance, we
+        legitimately need to register the residual."""
+        if all(
+            m.move_type == "entry"
+            and any(line.expense_id.clearing_advance_id for line in m.line_ids)
+            for m in self
+        ):
+            return self.line_ids.action_register_payment(ctx={"expense_clearing": 1})
+        return super().action_force_register_payment()
