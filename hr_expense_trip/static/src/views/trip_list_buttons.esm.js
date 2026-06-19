@@ -1,7 +1,10 @@
 import {ExpenseListController} from "@hr_expense/views/list";
+import {patch} from "@web/core/utils/patch";
 
-if (!ExpenseListController.prototype.displayCreateTrip) {
-    ExpenseListController.prototype.displayCreateTrip = function () {
+patch(ExpenseListController.prototype, {
+    // Whether the "Create Trip" button is shown: a team approver with a
+    // selection of expenses that are all unlinked and in a pre-posting state.
+    displayCreateTrip() {
         const records = this.model.root.selection;
         return (
             this.userIsExpenseTeamApprover &&
@@ -12,5 +15,5 @@ if (!ExpenseListController.prototype.displayCreateTrip) {
                     !record.data.trip_id
             )
         );
-    };
-}
+    },
+});
