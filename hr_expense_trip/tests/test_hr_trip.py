@@ -7,6 +7,11 @@ from unittest.mock import patch
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests.common import TransactionCase
 
+# Core hr.expense.action_post, reached via super() from our override.
+BASE_EXPENSE_ACTION_POST = (
+    "odoo.addons.hr_expense.models.hr_expense.HrExpense.action_post"
+)
+
 
 class TestHrTrip(TransactionCase):
     @classmethod
@@ -413,16 +418,14 @@ class TestHrTrip(TransactionCase):
             )
         )
 
-        # Set approval state to approved so it can be posted
         expense.sudo().write({"approval_state": "approved"})
 
-        # This should succeed without raising our UserError from the trip validation
-        # (it may fail later in the posting process, but not due to trip state)
-        try:
+        # The gate must let the call reach super().action_post(). Mock the core
+        # implementation so we assert the gate passes through without needing a
+        # full accounting setup.
+        with patch(BASE_EXPENSE_ACTION_POST, return_value=True) as mocked_post:
             expense.action_post()
-        except Exception as e:
-            # As long as it's not our UserError about the trip state, it's fine
-            self.assertNotIn("trip", str(e).lower())
+        mocked_post.assert_called_once()
 
     def test_expense_posting_allowed_without_trip(self):
         """Expense posting should be allowed if there is no trip."""
@@ -439,15 +442,11 @@ class TestHrTrip(TransactionCase):
             )
         )
 
-        # Set approval state to approved so it can be posted
         expense.sudo().write({"approval_state": "approved"})
 
-        # This should succeed without raising our UserError from the trip validation
-        try:
+        with patch(BASE_EXPENSE_ACTION_POST, return_value=True) as mocked_post:
             expense.action_post()
-        except Exception as e:
-            # As long as it's not our UserError about the trip state, it's fine
-            self.assertNotIn("trip", str(e).lower())
+        mocked_post.assert_called_once()
 
     def test_employee_cannot_change_when_expenses_exist(self):
         trip = self._create_employee_trip(name="Employee Lock Trip")

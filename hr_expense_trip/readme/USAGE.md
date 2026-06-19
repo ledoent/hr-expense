@@ -1,3 +1,16 @@
+You can create a trip from scratch, or batch existing expense lines into one.
+
+Batch from the expense list
+---------------------------
+
+In the expense list, select one or more unlinked expenses (in draft, submitted
+or approved state) and click *Create Trip* (approvers only). One trip is created
+per employee, spanning the earliest to latest expense date, and the selected
+expenses are linked to it.
+
+Create a trip manually
+----------------------
+
 1. Go to *Expenses > My Trips* and create a new trip.
 2. Fill in the trip name, dates, employee, and optional partner/reason.
 3. Click *Request Approval*:

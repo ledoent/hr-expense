@@ -89,9 +89,9 @@ class HrTrip(models.Model):
             .get_param("hr_expense_trip.auto_approve", default="True")
         )
         if auto_approve == "True" or self._is_user_trip_approver():
-            self.state = "receipts"
+            self._set_state("receipts")
         else:
-            self.state = "request"
+            self._set_state("request")
             manager_employee = self.employee_id.parent_id
             manager = manager_employee.user_id if manager_employee else False
             if manager:
@@ -106,50 +106,55 @@ class HrTrip(models.Model):
         self.ensure_one()
         if not self._is_user_trip_approver():
             raise AccessError(self.env._("You are not allowed to approve this trip."))
-        self.state = "receipts"
+        self._set_state("receipts")
 
-    def write(self, vals):
-        if self.env.context.get("skip_trip_write_protection"):
-            return super().write(vals)
+    def _set_state(self, state):
+        """Single entry point for workflow state transitions. Bypasses the
+        post-approval write lock so the workflow buttons keep working for the
+        employee, while direct field edits stay protected."""
+        self.with_context(skip_trip_write_protection=True).write({"state": state})
 
-        state_only_done_transition = (
-            set(vals) == {"state"} and vals.get("state") == "done"
-        )
-        state_only_receipts_transition = (
-            set(vals) == {"state"} and vals.get("state") == "receipts"
-        )
-
-        if "employee_id" in vals:
-            blocked_trips = self.filtered(
-                lambda trip: trip.expense_ids
-                and trip.employee_id.id != vals["employee_id"]
-            )
-            if blocked_trips:
+    @api.constrains("employee_id", "expense_ids")
+    def _check_expense_employee(self):
+        """Linked expenses must belong to the trip's employee. This also blocks
+        changing the employee once expenses are linked."""
+        for trip in self:
+            if any(
+                expense.employee_id != trip.employee_id for expense in trip.expense_ids
+            ):
                 raise ValidationError(
                     self.env._(
-                        "You cannot change the employee once expenses are "
-                        "linked to the trip."
+                        "Linked expenses must belong to the trip's employee. "
+                        "Unlink them before changing the employee."
                     )
                 )
 
-        if "expense_ids" in vals and any(trip.state == "done" for trip in self):
-            # Only managers and administrators can edit expenses in "done" state
-            if not any(trip._is_user_trip_approver() for trip in self):
+    def write(self, vals):
+        # Workflow transitions (via _set_state) and internal writes bypass the
+        # post-approval lock.
+        if self.env.context.get("skip_trip_write_protection"):
+            return super().write(vals)
+        # Expenses can no longer be (un)linked once the trip is done, unless the
+        # user is an approver.
+        if "expense_ids" in vals:
+            locked = self.filtered(
+                lambda trip: trip.state == "done" and not trip._is_user_trip_approver()
+            )
+            if locked:
                 raise AccessError(
                     self.env._(
                         "Expenses cannot be modified once the trip is marked as done."
                     )
                 )
-
-        protected_fields = set(vals) - {"expense_ids"}
-        if protected_fields and not (
-            state_only_done_transition or state_only_receipts_transition
-        ):
-            blocked_trips = self.filtered(
+        # Any other field (state included) is locked once the trip is approved,
+        # unless the user is an approver. The workflow buttons go through
+        # _set_state and are therefore exempt.
+        if set(vals) - {"expense_ids"}:
+            locked = self.filtered(
                 lambda trip: trip.state in ("receipts", "done")
                 and not trip._is_user_trip_approver()
             )
-            if blocked_trips:
+            if locked:
                 raise AccessError(
                     self.env._(
                         "Only managers and administrators can edit trip information "
@@ -167,12 +172,12 @@ class HrTrip(models.Model):
         for expense in draft_expenses:
             submit_user = expense.employee_id.user_id or self.env.user
             expense.with_user(submit_user).action_submit()
-        self.state = "done"
+        self._set_state("done")
         self._attach_trip_report()
 
     def action_add_more_receipts(self):
         self.ensure_one()
-        self.state = "receipts"
+        self._set_state("receipts")
 
     def _attach_trip_report(self):
         self.ensure_one()
@@ -199,7 +204,6 @@ class HrTrip(models.Model):
             raise AccessError(
                 self.env._("All expenses must be in approved state to create a bill.")
             )
-        moves = self.env["account.move"]
         expenses = self.expense_ids.filtered(lambda e: e.state == "approved")
         expenses.action_post()
         moves = expenses.account_move_id
