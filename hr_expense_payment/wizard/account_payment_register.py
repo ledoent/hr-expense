@@ -10,15 +10,21 @@ class AccountPaymentRegister(models.TransientModel):
 
     def _create_payment_vals_from_wizard(self, batch_result):
         payment_vals = super()._create_payment_vals_from_wizard(batch_result)
-        expense_sheet_ids = self._context.get("expense_sheet_ids", False)
-        if expense_sheet_ids:
-            payment_vals.update(expense_sheet_ids=expense_sheet_ids)
+        expense_ids = self.env.context.get("hr_expense_ids")
+        if expense_ids:
+            payment_vals["expense_ids"] = [(6, 0, expense_ids)]
         return payment_vals
 
     def _create_payment_vals_from_batch(self, batch_result):
         payment_vals = super()._create_payment_vals_from_batch(batch_result)
-        expense_sheet_ids = self._context.get("expense_sheet_ids", False)
-        if expense_sheet_ids:
-            moves = self.env["account.move"].browse(batch_result["lines"].move_id.ids)
-            payment_vals.update(expense_sheet_ids=moves.mapped("expense_sheet_id").ids)
+        expense_ids = self.env.context.get("hr_expense_ids")
+        if expense_ids:
+            # action_pay path: use the caller-supplied ids.
+            payment_vals["expense_ids"] = [(6, 0, expense_ids)]
+            return payment_vals
+        # Otherwise derive from the batch's moves (payment registered move-side).
+        moves = self.env["account.move"].browse(batch_result["lines"].move_id.ids)
+        expenses = moves.expense_ids
+        if expenses:
+            payment_vals["expense_ids"] = [(6, 0, expenses.ids)]
         return payment_vals

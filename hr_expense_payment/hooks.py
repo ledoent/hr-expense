@@ -3,13 +3,17 @@
 
 
 def post_init_hook(env):
-    """Trying to fill the source expense sheet in payments"""
-    sheets = env["hr.expense.sheet"].search([("payment_mode", "=", "own_account")])
-    for sheet in sheets:
-        amls = sheet.account_move_ids.mapped("line_ids")
+    """Backfill payment_ids on expenses paid before the module was installed,
+    via the expense move's reconciliation."""
+    expenses = env["hr.expense"].search(
+        [("payment_mode", "=", "own_account"), ("account_move_id", "!=", False)]
+    )
+    for expense in expenses:
+        amls = expense.account_move_id.line_ids
         reconcile = amls.mapped("full_reconcile_id")
         aml_payment = reconcile.mapped("reconciled_line_ids").filtered(
             lambda r, amls=amls: r not in amls
         )
         payment = aml_payment.mapped("payment_id")
-        payment.write({"expense_sheet_ids": sheet.ids})
+        if payment:
+            payment.write({"expense_ids": [(4, expense.id)]})
