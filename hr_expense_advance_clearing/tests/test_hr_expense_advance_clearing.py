@@ -184,3 +184,118 @@ class TestHrExpenseAdvanceClearing(TestExpenseCommon):
         )
         advance.invalidate_recordset(["returned_amount", "clearing_residual"])
         self.assertIn(payments, advance.payment_return_ids)
+
+    # -------------------------------------------------------------------------
+    # Posting: clearing books as a journal entry against the advance
+    # -------------------------------------------------------------------------
+
+    def _post(self, expense):
+        if expense.state == "draft":
+            expense.action_submit()
+        if expense.state == "submitted":
+            expense.action_approve()
+        self.post_expenses_with_wizard(expense)
+
+    def test_clearing_posts_as_entry_and_reconciles(self):
+        """A clearing expense posts as a journal entry (not a vendor receipt)
+        crediting the advance account, reconciled against the advance."""
+        account_advance = self.emp_advance.property_account_expense_id
+        advance = self._new_advance(1000.0)
+        self._post(advance)
+        # The advance itself keeps core's vendor-receipt behaviour.
+        self.assertEqual(advance.account_move_id.move_type, "in_receipt")
+        clearing = self._new_clearing(advance, 600.0)
+        self._post(clearing)
+        move = clearing.account_move_id
+        self.assertEqual(move.move_type, "entry")
+        # Booked as a journal entry in a general journal, not a purchase bill.
+        self.assertEqual(move.journal_id.type, "general")
+        adv_lines = move.line_ids.filtered(
+            lambda line: line.account_id == account_advance
+        )
+        self.assertAlmostEqual(sum(adv_lines.mapped("credit")), 600.0)
+        self.assertTrue(
+            all(adv_lines.mapped("reconciled")),
+            "clearing entry's advance line must reconcile against the advance",
+        )
+        advance.invalidate_recordset(["cleared_amount", "clearing_residual"])
+        self.assertAlmostEqual(advance.clearing_residual, 400.0)
+        # The advance's own GL line is now partially reconciled: 600 of 1000
+        # consumed, 400 still open.
+        advance_gl = advance.account_move_id.line_ids.filtered(
+            lambda line: line.account_id == account_advance
+        )
+        self.assertAlmostEqual(sum(advance_gl.mapped("amount_residual")), 400.0)
+
+    def test_clearing_over_advance_splits_to_payable(self):
+        """When the clearing exceeds the advance, the excess books to the
+        employee payable so it can still be reimbursed."""
+        account_advance = self.emp_advance.property_account_expense_id
+        payable = (
+            self.expense_employee.sudo().work_contact_id.property_account_payable_id
+        )
+        advance = self._new_advance(1000.0)
+        self._post(advance)
+        clearing = self._new_clearing(advance, 1500.0)
+        self._post(clearing)
+        move = clearing.account_move_id
+        self.assertEqual(move.move_type, "entry")
+        self.assertAlmostEqual(
+            sum(
+                move.line_ids.filtered(
+                    lambda line: line.account_id == account_advance
+                ).mapped("credit")
+            ),
+            1000.0,
+        )
+        self.assertAlmostEqual(
+            sum(
+                move.line_ids.filtered(lambda line: line.account_id == payable).mapped(
+                    "credit"
+                )
+            ),
+            500.0,
+        )
+        advance.invalidate_recordset(["cleared_amount", "clearing_residual"])
+        self.assertEqual(advance.clearing_residual, 0.0)
+        # The leftover 500 stays open on the move as the amount still due to
+        # the employee (drives amount_payable / Register Payment).
+        self.assertAlmostEqual(move.amount_residual, 500.0)
+
+    def test_multiple_clearings_group_into_one_entry(self):
+        """Several clearings of the same advance posted together produce a
+        single entry, each debiting its own expense line, jointly crediting
+        the advance."""
+        account_advance = self.emp_advance.property_account_expense_id
+        advance = self._new_advance(1000.0)
+        self._post(advance)
+        c1 = self._new_clearing(advance, 300.0)
+        c2 = self._new_clearing(advance, 250.0)
+        expenses = c1 | c2
+        for expense in expenses:
+            expense.action_submit()
+            if expense.state == "submitted":
+                expense.action_approve()
+        self.post_expenses_with_wizard(expenses)
+        self.assertEqual(c1.account_move_id, c2.account_move_id)
+        move = c1.account_move_id
+        self.assertEqual(move.move_type, "entry")
+        self.assertEqual(len(move.line_ids.expense_id), 2)
+        self.assertAlmostEqual(
+            sum(
+                move.line_ids.filtered(
+                    lambda line: line.account_id == account_advance
+                ).mapped("credit")
+            ),
+            550.0,
+        )
+        advance.invalidate_recordset(["cleared_amount", "clearing_residual"])
+        self.assertAlmostEqual(advance.clearing_residual, 450.0)
+
+    def test_clearing_before_advance_posted_is_blocked(self):
+        """A clearing cannot post while its advance is still unposted —
+        otherwise its advance-account credit would dangle."""
+        advance = self._new_advance(1000.0)  # approved but NOT posted
+        clearing = self._new_clearing(advance, 200.0)
+        with self.assertRaises(UserError):
+            self._post(clearing)

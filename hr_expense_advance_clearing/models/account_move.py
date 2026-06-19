@@ -8,6 +8,52 @@ from odoo.exceptions import UserError
 class AccountMove(models.Model):
     _inherit = "account.move"
 
+    def action_post(self):
+        self._reroute_clearing_entries()
+        res = super().action_post()
+        self._reconcile_advance_clearing()
+        return res
+
+    def _reroute_clearing_entries(self):
+        """A clearing entry is an internal journal entry, not a purchase
+        document — but core's expense posting forces it into the purchase
+        journal (whence a 'BILL/...' name). Move draft clearing entries to a
+        general journal so they read and number as journal entries."""
+        for move in self:
+            if move.state != "draft" or move.move_type != "entry":
+                continue
+            if not move.line_ids.expense_id.filtered("clearing_advance_id"):
+                continue
+            if move.journal_id.type == "general":
+                continue
+            general = self.env["account.journal"].search(
+                [("type", "=", "general"), ("company_id", "=", move.company_id.id)],
+                limit=1,
+            )
+            if general:
+                move.journal_id = general
+
+    def _reconcile_advance_clearing(self):
+        """After a clearing entry posts, reconcile its employee-advance-account
+        credit line against the advance move's matching debit line, so the
+        clearing consumes the advance."""
+        emp_advance = self.env.ref(
+            "hr_expense_advance_clearing.product_emp_advance", False
+        )
+        if not emp_advance or not emp_advance.property_account_expense_id:
+            return
+        account_advance = emp_advance.property_account_expense_id
+        for move in self:
+            clearing = move.line_ids.expense_id.filtered("clearing_advance_id")
+            if not clearing:
+                continue
+            advance_moves = clearing.clearing_advance_id.account_move_id
+            lines = (move.line_ids | advance_moves.line_ids).filtered(
+                lambda line: line.account_id == account_advance and not line.reconciled
+            )
+            if len(lines) > 1:
+                lines.reconcile()
+
     def _check_hr_advance_move_reconciled(self):
         """Block draft/cancel/reverse while the advance line is still
         reconciled with a clearing or return."""

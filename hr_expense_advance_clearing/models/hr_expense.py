@@ -1,7 +1,9 @@
 # Copyright 2019 Kitti Upariphutthiphong <kittiu@ecosoft.co.th>
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
-from odoo import api, fields, models
+from collections import defaultdict
+
+from odoo import Command, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 
@@ -189,8 +191,11 @@ class HrExpense(models.Model):
             )
             expense.cleared_amount = cleared
             expense.returned_amount = returned
-            expense.clearing_residual = (
-                expense.total_amount_currency - cleared - returned
+            # Clamp at 0: over-clearing consumes the whole advance (the excess
+            # is the employee's out-of-pocket, booked to the payable), so the
+            # advance has nothing left rather than a negative residual.
+            expense.clearing_residual = max(
+                expense.total_amount_currency - cleared - returned, 0.0
             )
 
     @api.depends("clearing_expense_ids")
@@ -264,14 +269,124 @@ class HrExpense(models.Model):
             "domain": [("id", "in", self.payment_return_ids.ids)],
         }
 
-    # Auto-reconcile note: the 18.0 module reconciled the clearing sheet's
-    # journal items against the advance sheet's employee-advance-account
-    # lines at sheet-post time (sheet's _do_create_moves routed the credit
-    # line to the advance account specifically). In 19.0 the equivalent
-    # per-expense routing requires overriding _prepare_receipts_vals to
-    # swap the credit account for clearing expenses, which is non-trivial.
-    # Scoped out for this iteration — clearing_residual is driven by
-    # count-based aggregation of clearing_expense_ids' totals; users can
-    # reconcile journal items via the standard Odoo reconciliation UI.
-    # Follow-up: ADR section "Auto-reconciliation" tracks the design
-    # required to bring this back in a future iteration.
+    # -------------------------------------------------------------------------
+    # Posting: clearing expenses book as journal entries against the advance
+    # -------------------------------------------------------------------------
+
+    def _prepare_receipts_vals(self):
+        """Clearing expenses post as ``entry`` moves that credit the
+        employee-advance account, not as vendor receipts: the clearing
+        consumes the advance directly instead of raising a fresh payable.
+        Regular expenses keep core's ``in_receipt`` behaviour."""
+        clearing = self.filtered("clearing_advance_id")
+        regular = self - clearing
+        vals_list = (
+            super(HrExpense, regular)._prepare_receipts_vals() if regular else []
+        )
+        by_advance = defaultdict(self.browse)
+        for expense in clearing:
+            by_advance[expense.clearing_advance_id] |= expense
+        for advance, expenses in by_advance.items():
+            vals_list.append(expenses._prepare_clearing_entry_vals(advance))
+        return vals_list
+
+    def _prepare_clearing_entry_vals(self, advance):
+        """Build one ``entry`` move debiting each clearing expense's account
+        and crediting the employee-advance account (capped at the advance
+        residual; any excess goes to the employee payable so it can still be
+        reimbursed). Taxes are reflected via base tags only."""
+        emp_advance = self._get_product_advance()
+        account_advance = emp_advance.property_account_expense_id
+        partner = advance.employee_id.sudo().work_contact_id
+        payable_account = partner.property_account_payable_id
+        # Amounts are booked in the company currency; a clearing expense in a
+        # foreign currency is converted (total_amount) and not tracked in its
+        # own currency on the entry. Multi-currency clearing is out of scope.
+        company_currency = self.company_id.currency_id
+        # The advance must be posted first: the entry credits the advance
+        # account and is reconciled against the advance's debit, so without a
+        # posted advance the credit would dangle.
+        advance_move = advance.account_move_id
+        if advance_move.state != "posted":
+            raise UserError(
+                self.env._(
+                    "Post the advance %(name)s before clearing expenses against it.",
+                    name=advance.name,
+                )
+            )
+        # Cap against the advance's still-unreconciled balance on the advance
+        # account (its real GL residual), not the count-based clearing_residual
+        # field — that field already nets out the approved clearings being
+        # posted now, which would double-count and under-credit the advance.
+        advance_lines = advance_move.line_ids.filtered(
+            lambda line: line.account_id == account_advance
+        )
+        advance_to_clear = sum(advance_lines.mapped("amount_residual"))
+        line_cmds = []
+        for expense in self:
+            name = expense._get_move_line_name()
+            taxes = expense.tax_ids.with_context(round=True).compute_all(
+                expense.price_unit or expense.total_amount,
+                expense.currency_id,
+                expense.quantity if expense.price_unit else 1,
+                expense.product_id,
+            )
+            line_cmds.append(
+                Command.create(
+                    {
+                        "name": name,
+                        "account_id": expense._get_base_account().id,
+                        "debit": expense.total_amount,
+                        "credit": 0.0,
+                        "currency_id": company_currency.id,
+                        "product_id": expense.product_id.id,
+                        "product_uom_id": expense.product_uom_id.id,
+                        "analytic_distribution": expense.analytic_distribution,
+                        "tax_ids": [Command.set(expense.tax_ids.ids)],
+                        "tax_tag_ids": [Command.set(taxes["base_tags"])],
+                        "expense_id": expense.id,
+                        "partner_id": partner.id,
+                    }
+                )
+            )
+            credit = expense.total_amount
+            cleared = max(min(credit, advance_to_clear), 0.0)
+            advance_to_clear -= cleared
+            if cleared:
+                line_cmds.append(
+                    Command.create(
+                        {
+                            "name": name,
+                            "account_id": account_advance.id,
+                            "debit": 0.0,
+                            "credit": cleared,
+                            "currency_id": company_currency.id,
+                            "expense_id": expense.id,
+                            "partner_id": partner.id,
+                        }
+                    )
+                )
+            remainder = credit - cleared
+            if remainder:
+                line_cmds.append(
+                    Command.create(
+                        {
+                            "name": name,
+                            "account_id": payable_account.id,
+                            "debit": 0.0,
+                            "credit": remainder,
+                            "currency_id": company_currency.id,
+                            "expense_id": expense.id,
+                            "partner_id": partner.id,
+                        }
+                    )
+                )
+        return {
+            **self._prepare_move_vals(),
+            "ref": self.env._("Advance clearing: %(name)s", name=advance.name),
+            "move_type": "entry",
+            "partner_id": partner.id,
+            "currency_id": company_currency.id,
+            "company_id": self.company_id.id,
+            "line_ids": line_cmds,
+        }
