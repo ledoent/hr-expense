@@ -27,18 +27,6 @@ class HrExpense(models.Model):
         store=False,
     )
 
-    def action_add_existing_expenses(self):
-        self.ensure_one()
-        trip_id = self.env.context.get("default_trip_id")
-        return {
-            "type": "ir.actions.act_window",
-            "name": self.env._("Add: Expenses"),
-            "res_model": "hr.trip",
-            "res_id": trip_id,
-            "view_mode": "form",
-            "target": "new",
-        }
-
     def default_get(self, fields_list):
         defaults = super().default_get(fields_list)
         if "trip_id" in fields_list and not defaults.get("trip_id"):

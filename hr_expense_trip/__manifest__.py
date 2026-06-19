@@ -6,7 +6,8 @@
     "version": "19.0.1.0.0",
     "category": "Human Resources",
     "author": "Odoo Community Association (OCA)",
-    "license": "LGPL-3",
+    "license": "AGPL-3",
+    "development_status": "Beta",
     "website": "https://github.com/OCA/hr-expense",
     "depends": ["hr_expense", "mail"],
     "data": [
