@@ -17,9 +17,9 @@ HR Expense Trip
 .. |badge1| image:: https://img.shields.io/badge/maturity-Beta-yellow.png
     :target: https://odoo-community.org/page/development-status
     :alt: Beta
-.. |badge2| image:: https://img.shields.io/badge/license-LGPL--3-blue.png
-    :target: http://www.gnu.org/licenses/lgpl-3.0-standalone.html
-    :alt: License: LGPL-3
+.. |badge2| image:: https://img.shields.io/badge/license-AGPL--3-blue.png
+    :target: http://www.gnu.org/licenses/agpl-3.0-standalone.html
+    :alt: License: AGPL-3
 .. |badge3| image:: https://img.shields.io/badge/github-OCA%2Fhr--expense-lightgray.png?logo=github
     :target: https://github.com/OCA/hr-expense/tree/19.0/hr_expense_trip
     :alt: OCA/hr-expense
@@ -37,15 +37,15 @@ related expense lines under a single business trip.
 
 Key features:
 
--  Create trips with employee, date range, partner, and reason.
--  Link existing expense lines to a trip from the trip form.
--  Open linked expenses directly from the trip to review details.
--  Optional manager approval flow before collecting receipts.
--  Role-based access for employees, approvers, and administrators.
--  Dedicated "Trip to Process" workspace for managers/approvers.
--  Generate and attach a trip PDF report when the trip is marked done.
--  Automatic bill creation from approved expenses with trip PDF
-   attachment.
+- Create trips with employee, date range, partner, and reason.
+- Link existing expense lines to a trip from the trip form.
+- Open linked expenses directly from the trip to review details.
+- Optional manager approval flow before collecting receipts.
+- Role-based access for employees, approvers, and administrators.
+- Dedicated "Trip to Process" workspace for managers/approvers.
+- Generate and attach a trip PDF report when the trip is marked done.
+- Automatic bill creation from approved expenses with trip PDF
+  attachment.
 
 **Table of contents**
 
@@ -55,19 +55,32 @@ Key features:
 Usage
 =====
 
+You can create a trip from scratch, or batch existing expense lines into
+one.
+
+Batch from the expense list
+---------------------------
+
+In the expense list, select one or more unlinked expenses (in draft,
+submitted or approved state) and click *Create Trip* (approvers only).
+One trip is created per employee, spanning the earliest to latest
+expense date, and the selected expenses are linked to it.
+
+Create a trip manually
+----------------------
+
 1. Go to *Expenses > My Trips* and create a new trip.
 2. Fill in the trip name, dates, employee, and optional partner/reason.
 3. Click *Request Approval*: In this step, pre-trip approvals can be
    handled, and additional workflows can be triggered after approval
    (for example an A1 certificate process).
 
-   -  If **Auto Approve Trip Requests** is enabled, the trip moves
-      directly to *Collect Receipts*.
-   -  Otherwise, if the requester is already an allowed approver for
-      that trip, it is approved immediately without creating an
-      activity.
-   -  Otherwise, a *Trip Approval Request* activity is created for the
-      manager.
+   - If **Auto Approve Trip Requests** is enabled, the trip moves
+     directly to *Collect Receipts*.
+   - Otherwise, if the requester is already an allowed approver for that
+     trip, it is approved immediately without creating an activity.
+   - Otherwise, a *Trip Approval Request* activity is created for the
+     manager.
 
 4. In the *Expenses* tab, use *Add* to select existing draft expenses
    for the same employee, then save.
@@ -83,13 +96,13 @@ Usage
 Role behavior
 -------------
 
--  Employees can create and edit their own trips.
--  Managers/approvers can view and approve trips they are responsible
-   for.
--  Expense administrators can edit all trips.
--  After a trip is approved, only managers/administrators can edit trip
-   information.
--  The *Expenses* tab remains editable until the trip reaches *Done*.
+- Employees can create and edit their own trips.
+- Managers/approvers can view and approve trips they are responsible
+  for.
+- Expense administrators can edit all trips.
+- After a trip is approved, only managers/administrators can edit trip
+  information.
+- The *Expenses* tab remains editable until the trip reaches *Done*.
 
 Manager processing menu
 -----------------------
@@ -135,9 +148,9 @@ Credits
 Contributors
 ------------
 
--  `glueckkanja AG <https://www.glueckkanja.com>`__:
+- `glueckkanja AG <https://www.glueckkanja.com>`__:
 
-   -  Christopher Rogos
+  - Christopher Rogos
 
 Maintainers
 -----------

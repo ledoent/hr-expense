@@ -374,7 +374,7 @@ ul.auto-toc {
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! source digest: sha256:48489de083f98d6ebfbe9d3a0c673f89bcf4718c546781b3b3818a17726247d8
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -->
-<p><a class="reference external image-reference" href="https://odoo-community.org/page/development-status"><img alt="Beta" src="https://img.shields.io/badge/maturity-Beta-yellow.png" /></a> <a class="reference external image-reference" href="http://www.gnu.org/licenses/lgpl-3.0-standalone.html"><img alt="License: LGPL-3" src="https://img.shields.io/badge/license-LGPL--3-blue.png" /></a> <a class="reference external image-reference" href="https://github.com/OCA/hr-expense/tree/19.0/hr_expense_trip"><img alt="OCA/hr-expense" src="https://img.shields.io/badge/github-OCA%2Fhr--expense-lightgray.png?logo=github" /></a> <a class="reference external image-reference" href="https://translation.odoo-community.org/projects/hr-expense-19-0/hr-expense-19-0-hr_expense_trip"><img alt="Translate me on Weblate" src="https://img.shields.io/badge/weblate-Translate%20me-F47D42.png" /></a> <a class="reference external image-reference" href="https://runboat.odoo-community.org/builds?repo=OCA/hr-expense&amp;target_branch=19.0"><img alt="Try me on Runboat" src="https://img.shields.io/badge/runboat-Try%20me-875A7B.png" /></a></p>
+<p><a class="reference external image-reference" href="https://odoo-community.org/page/development-status"><img alt="Beta" src="https://img.shields.io/badge/maturity-Beta-yellow.png" /></a> <a class="reference external image-reference" href="http://www.gnu.org/licenses/agpl-3.0-standalone.html"><img alt="License: AGPL-3" src="https://img.shields.io/badge/license-AGPL--3-blue.png" /></a> <a class="reference external image-reference" href="https://github.com/OCA/hr-expense/tree/19.0/hr_expense_trip"><img alt="OCA/hr-expense" src="https://img.shields.io/badge/github-OCA%2Fhr--expense-lightgray.png?logo=github" /></a> <a class="reference external image-reference" href="https://translation.odoo-community.org/projects/hr-expense-19-0/hr-expense-19-0-hr_expense_trip"><img alt="Translate me on Weblate" src="https://img.shields.io/badge/weblate-Translate%20me-F47D42.png" /></a> <a class="reference external image-reference" href="https://runboat.odoo-community.org/builds?repo=OCA/hr-expense&amp;target_branch=19.0"><img alt="Try me on Runboat" src="https://img.shields.io/badge/runboat-Try%20me-875A7B.png" /></a></p>
 <p>This module introduces <strong>Trips</strong> in Expenses so employees can group
 related expense lines under a single business trip.</p>
 <p>Key features:</p>
@@ -393,22 +393,35 @@ attachment.</li>
 <div class="contents local topic" id="contents">
 <ul class="simple">
 <li><a class="reference internal" href="#usage" id="toc-entry-1">Usage</a><ul>
-<li><a class="reference internal" href="#role-behavior" id="toc-entry-2">Role behavior</a></li>
-<li><a class="reference internal" href="#manager-processing-menu" id="toc-entry-3">Manager processing menu</a></li>
-<li><a class="reference internal" href="#create-bill-feature" id="toc-entry-4">Create Bill feature</a></li>
-<li><a class="reference internal" href="#configuration" id="toc-entry-5">Configuration</a></li>
+<li><a class="reference internal" href="#batch-from-the-expense-list" id="toc-entry-2">Batch from the expense list</a></li>
+<li><a class="reference internal" href="#create-a-trip-manually" id="toc-entry-3">Create a trip manually</a></li>
+<li><a class="reference internal" href="#role-behavior" id="toc-entry-4">Role behavior</a></li>
+<li><a class="reference internal" href="#manager-processing-menu" id="toc-entry-5">Manager processing menu</a></li>
+<li><a class="reference internal" href="#create-bill-feature" id="toc-entry-6">Create Bill feature</a></li>
+<li><a class="reference internal" href="#configuration" id="toc-entry-7">Configuration</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#bug-tracker" id="toc-entry-6">Bug Tracker</a></li>
-<li><a class="reference internal" href="#credits" id="toc-entry-7">Credits</a><ul>
-<li><a class="reference internal" href="#contributors" id="toc-entry-8">Contributors</a></li>
-<li><a class="reference internal" href="#maintainers" id="toc-entry-9">Maintainers</a></li>
+<li><a class="reference internal" href="#bug-tracker" id="toc-entry-8">Bug Tracker</a></li>
+<li><a class="reference internal" href="#credits" id="toc-entry-9">Credits</a><ul>
+<li><a class="reference internal" href="#contributors" id="toc-entry-10">Contributors</a></li>
+<li><a class="reference internal" href="#maintainers" id="toc-entry-11">Maintainers</a></li>
 </ul>
 </li>
 </ul>
 </div>
 <div class="section" id="usage">
 <h2><a class="toc-backref" href="#toc-entry-1">Usage</a></h2>
+<p>You can create a trip from scratch, or batch existing expense lines into
+one.</p>
+<div class="section" id="batch-from-the-expense-list">
+<h3><a class="toc-backref" href="#toc-entry-2">Batch from the expense list</a></h3>
+<p>In the expense list, select one or more unlinked expenses (in draft,
+submitted or approved state) and click <em>Create Trip</em> (approvers only).
+One trip is created per employee, spanning the earliest to latest
+expense date, and the selected expenses are linked to it.</p>
+</div>
+<div class="section" id="create-a-trip-manually">
+<h3><a class="toc-backref" href="#toc-entry-3">Create a trip manually</a></h3>
 <ol class="arabic simple">
 <li>Go to <em>Expenses &gt; My Trips</em> and create a new trip.</li>
 <li>Fill in the trip name, dates, employee, and optional partner/reason.</li>
@@ -417,9 +430,8 @@ handled, and additional workflows can be triggered after approval
 (for example an A1 certificate process).<ul>
 <li>If <strong>Auto Approve Trip Requests</strong> is enabled, the trip moves
 directly to <em>Collect Receipts</em>.</li>
-<li>Otherwise, if the requester is already an allowed approver for
-that trip, it is approved immediately without creating an
-activity.</li>
+<li>Otherwise, if the requester is already an allowed approver for that
+trip, it is approved immediately without creating an activity.</li>
 <li>Otherwise, a <em>Trip Approval Request</em> activity is created for the
 manager.</li>
 </ul>
@@ -435,8 +447,9 @@ only when trip is in state done all expenses are in approved state).
 This will post all expenses and attach the trip PDF to each resulting
 bill.</li>
 </ol>
+</div>
 <div class="section" id="role-behavior">
-<h3><a class="toc-backref" href="#toc-entry-2">Role behavior</a></h3>
+<h3><a class="toc-backref" href="#toc-entry-4">Role behavior</a></h3>
 <ul class="simple">
 <li>Employees can create and edit their own trips.</li>
 <li>Managers/approvers can view and approve trips they are responsible
@@ -448,12 +461,12 @@ information.</li>
 </ul>
 </div>
 <div class="section" id="manager-processing-menu">
-<h3><a class="toc-backref" href="#toc-entry-3">Manager processing menu</a></h3>
+<h3><a class="toc-backref" href="#toc-entry-5">Manager processing menu</a></h3>
 <p>Managers can open <em>Expenses &gt; Trip to Process</em> to review requested trips
 where they are responsible as manager.</p>
 </div>
 <div class="section" id="create-bill-feature">
-<h3><a class="toc-backref" href="#toc-entry-4">Create Bill feature</a></h3>
+<h3><a class="toc-backref" href="#toc-entry-6">Create Bill feature</a></h3>
 <p>The <em>Create Bill</em> button is automatically displayed when all expenses
 linked to the trip are in approved state and the trip is in state done.
 Clicking this button will:</p>
@@ -467,14 +480,14 @@ chatter.</li>
 is automatically associated with the financial records.</p>
 </div>
 <div class="section" id="configuration">
-<h3><a class="toc-backref" href="#toc-entry-5">Configuration</a></h3>
+<h3><a class="toc-backref" href="#toc-entry-7">Configuration</a></h3>
 <p>To configure auto approval, go to <em>Expenses &gt; Configuration &gt; Settings</em>
 and in the <em>Trips</em> section enable or disable <em>Auto Approve Trip
 Requests</em>.</p>
 </div>
 </div>
 <div class="section" id="bug-tracker">
-<h2><a class="toc-backref" href="#toc-entry-6">Bug Tracker</a></h2>
+<h2><a class="toc-backref" href="#toc-entry-8">Bug Tracker</a></h2>
 <p>Bugs are tracked on <a class="reference external" href="https://github.com/OCA/hr-expense/issues">GitHub Issues</a>.
 In case of trouble, please check there if your issue has already been reported.
 If you spotted it first, help us to smash it by providing a detailed and welcomed
@@ -482,9 +495,9 @@ If you spotted it first, help us to smash it by providing a detailed and welcome
 <p>Do not contact contributors directly about support or help with technical issues.</p>
 </div>
 <div class="section" id="credits">
-<h2><a class="toc-backref" href="#toc-entry-7">Credits</a></h2>
+<h2><a class="toc-backref" href="#toc-entry-9">Credits</a></h2>
 <div class="section" id="contributors">
-<h3><a class="toc-backref" href="#toc-entry-8">Contributors</a></h3>
+<h3><a class="toc-backref" href="#toc-entry-10">Contributors</a></h3>
 <ul class="simple">
 <li><a class="reference external" href="https://www.glueckkanja.com">glueckkanja AG</a>:<ul>
 <li>Christopher Rogos</li>
@@ -493,7 +506,7 @@ If you spotted it first, help us to smash it by providing a detailed and welcome
 </ul>
 </div>
 <div class="section" id="maintainers">
-<h3><a class="toc-backref" href="#toc-entry-9">Maintainers</a></h3>
+<h3><a class="toc-backref" href="#toc-entry-11">Maintainers</a></h3>
 <p>This module is maintained by the OCA.</p>
 <a class="reference external image-reference" href="https://odoo-community.org">
 <img alt="Odoo Community Association" src="https://odoo-community.org/logo.png" />
