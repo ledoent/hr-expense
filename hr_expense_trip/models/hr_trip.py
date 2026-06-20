@@ -205,8 +205,7 @@ class HrTrip(models.Model):
                 self.env._("All expenses must be in approved state to create a bill.")
             )
         expenses = self.expense_ids.filtered(lambda e: e.state == "approved")
-        expenses.action_post()
-        moves = expenses.account_move_id
+        moves = self._post_trip_expenses(expenses)
 
         if moves:
             self._attach_trip_report_to_moves(moves)
@@ -217,6 +216,56 @@ class HrTrip(models.Model):
                 action_dict = action.read()[0]
                 action_dict["domain"] = [("id", "in", moves.ids)]
                 return action_dict
+
+    def _post_trip_expenses(self, expenses):
+        """Post the trip's approved expenses and return the resulting moves.
+
+        Company-paid expenses post directly through the standard flow. For
+        employee-paid ('own_account') expenses, core ``hr.expense.action_post``
+        only returns an interactive posting wizard and creates no move on its
+        own, so calling it here would silently post nothing. We instead build
+        and post the receipt entries the wizard would create, so "Create Bill"
+        works in one click for the (common) employee-paid case.
+        """
+        company_expenses = expenses.filtered(
+            lambda e: e.payment_mode == "company_account"
+        )
+        employee_expenses = expenses - company_expenses
+        moves = self.env["account.move"]
+        if company_expenses:
+            company_expenses.action_post()
+            moves |= company_expenses.account_move_id
+        if employee_expenses:
+            journal = self._employee_expense_journal()
+            receipt_vals = [
+                {
+                    **vals,
+                    "journal_id": journal.id,
+                    "invoice_date": fields.Date.context_today(self),
+                }
+                for vals in employee_expenses._prepare_receipts_vals()
+            ]
+            employee_moves = self.env["account.move"].sudo().create(receipt_vals)
+            employee_moves.action_post()
+            moves |= employee_moves
+        return moves
+
+    def _employee_expense_journal(self):
+        """Resolve the purchase journal for employee-paid expense entries,
+        mirroring the default of core's expense posting wizard."""
+        company = self.env.company
+        journal = company.expense_journal_id
+        if not journal:
+            journal = company.parent_ids[::-1].expense_journal_id[:1]
+        if not journal:
+            journal = self.env["account.journal"].search(
+                [
+                    *self.env["account.journal"]._check_company_domain(company.id),
+                    ("type", "=", "purchase"),
+                ],
+                limit=1,
+            )
+        return journal
 
     def _attach_trip_report_to_moves(self, moves):
         self.ensure_one()
