@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="hr_trip_view_form_payment" model="ir.ui.view">
+        <field name="name">hr.trip.view.form - payment</field>
+        <field name="model">hr.trip</field>
+        <field name="inherit_id" ref="hr_expense_trip.hr_trip_view_form" />
+        <field name="arch" type="xml">
+            <field name="can_create_bill" position="after">
+                <field name="payable_expense_count" invisible="1" />
+            </field>
+            <button name="action_post" position="after">
+                <button
+                    name="action_pay_trip"
+                    type="object"
+                    string="Pay Trip"
+                    class="btn-primary"
+                    invisible="payable_expense_count == 0"
+                    groups="hr_expense.group_hr_expense_team_approver"
+                />
+            </button>
+        </field>
+    </record>
+</odoo>
