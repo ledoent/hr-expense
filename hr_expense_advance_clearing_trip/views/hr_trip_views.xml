@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="hr_trip_view_form_advance" model="ir.ui.view">
+        <field name="name">hr.trip.view.form - advance clearing</field>
+        <field name="model">hr.trip</field>
+        <field name="inherit_id" ref="hr_expense_trip.hr_trip_view_form" />
+        <field name="arch" type="xml">
+            <button name="action_request_approval" position="before">
+                <button
+                    name="action_apply_advance"
+                    type="object"
+                    string="Apply Advance"
+                    class="btn-secondary"
+                    invisible="not advance_id or state == 'done'"
+                />
+            </button>
+            <field name="partner_id" position="after">
+                <field
+                    name="advance_id"
+                    options="{'no_create': True}"
+                    readonly="state == 'done'"
+                />
+                <field name="advance_residual" invisible="not advance_id" />
+                <field name="currency_id" invisible="1" />
+            </field>
+        </field>
+    </record>
+</odoo>
