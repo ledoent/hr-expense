@@ -80,8 +80,21 @@ class AccountMove(models.Model):
             )
 
     def button_draft(self):
+        if self.env.context.get("skip_invoice_sync"):
+            return super().button_draft()
         self._check_hr_advance_move_reconciled()
-        return super().button_draft()
+        # Clearing entries keep an explicit balance + explicit tax lines. The
+        # tax recompute the invoice-sync runs on reset-to-draft would otherwise
+        # strip the tax twice and add a spurious "Automatic Balancing Line";
+        # reset those entries without the sync.
+        clearing_moves = self.filtered(
+            lambda m: m.move_type == "entry"
+            and m.line_ids.expense_id.filtered("clearing_advance_id")
+        )
+        if not clearing_moves:
+            return super().button_draft()
+        (self - clearing_moves).button_draft()
+        return clearing_moves.with_context(skip_invoice_sync=True).button_draft()
 
     def button_cancel(self):
         self._check_hr_advance_move_reconciled()
