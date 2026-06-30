@@ -290,6 +290,17 @@ class HrExpense(models.Model):
             vals_list.append(expenses._prepare_clearing_entry_vals(advance))
         return vals_list
 
+    def _get_advance_analytic_distribution(self, advance_move):
+        """Return the advance move's analytic distribution when all of its
+        lines share a single one, so the clearing credit to the advance
+        account carries the same analytic as the original advance."""
+        analytics = [
+            a for a in advance_move.line_ids.mapped("analytic_distribution") if a
+        ]
+        if len({str(a) for a in analytics}) == 1:
+            return analytics[0]
+        return False
+
     def _prepare_clearing_entry_vals(self, advance):
         """Build one ``entry`` move debiting each clearing expense's account
         and crediting the employee-advance account (capped at the advance
@@ -314,6 +325,7 @@ class HrExpense(models.Model):
                     name=advance.name,
                 )
             )
+        advance_analytic = self._get_advance_analytic_distribution(advance_move)
         # Cap against the advance's still-unreconciled balance on the advance
         # account (its real GL residual), not the count-based clearing_residual
         # field — that field already nets out the approved clearings being
@@ -361,6 +373,7 @@ class HrExpense(models.Model):
                             "debit": 0.0,
                             "credit": cleared,
                             "currency_id": company_currency.id,
+                            "analytic_distribution": advance_analytic,
                             "expense_id": expense.id,
                             "partner_id": partner.id,
                         }
