@@ -48,7 +48,7 @@ class HrExpense(models.Model):
         readonly=True,
         help="Refund payments returning unused advance money to the company.",
     )
-    return_count = fields.Integer(compute="_compute_return_count")
+    return_count = fields.Integer(compute="_compute_return_count", compute_sudo=True)
 
     cleared_amount = fields.Monetary(
         compute="_compute_clearing_residual",
