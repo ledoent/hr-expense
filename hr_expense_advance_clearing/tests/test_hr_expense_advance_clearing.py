@@ -118,6 +118,7 @@ class TestHrExpenseAdvanceClearing(TestExpenseCommon):
         """action_return_advance gates on expense_type + residual, and
         returns the payment-register wizard action when valid."""
         advance = self._new_advance(500.0)
+        self._post(advance)
         # A regular expense cannot be returned.
         regular = self.env["hr.expense"].create(
             {
@@ -136,6 +137,10 @@ class TestHrExpenseAdvanceClearing(TestExpenseCommon):
         self.assertEqual(action["res_model"], "account.payment.register")
         self.assertEqual(action["context"]["default_advance_id"], advance.id)
         self.assertTrue(action["context"].get("hr_return_advance"))
+        # The wizard is invoked on the advance's open move line (not on a bare
+        # hr.expense), so the register-payment wizard accepts it.
+        self.assertEqual(action["context"]["active_model"], "account.move.line")
+        self.assertTrue(action["context"]["active_ids"])
         # Once fully cleared, residual is zero → action raises.
         clearing = self._new_clearing(advance, 500.0)
         clearing.action_submit()

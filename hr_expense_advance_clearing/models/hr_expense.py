@@ -233,6 +233,15 @@ class HrExpense(models.Model):
             raise UserError(self.env._("Only advance expenses can be returned."))
         if self.clearing_residual <= 0:
             raise UserError(self.env._("This advance has no residual to return."))
+        # The register-payment wizard must be invoked on account.move(.line)
+        # records: target the advance's still-open employee-advance line so the
+        # returned payment reconciles against it.
+        account_advance = self._get_product_advance().property_account_expense_id
+        advance_line = self.account_move_id.line_ids.filtered(
+            lambda line: line.account_id == account_advance and not line.reconciled
+        )
+        if not advance_line:
+            raise UserError(self.env._("No open advance line found to return."))
         return {
             "type": "ir.actions.act_window",
             "name": self.env._("Return Advance"),
@@ -240,6 +249,8 @@ class HrExpense(models.Model):
             "view_mode": "form",
             "target": "new",
             "context": {
+                "active_model": "account.move.line",
+                "active_ids": advance_line.ids,
                 "default_partner_type": "customer",
                 "default_partner_id": self.employee_id.sudo().work_contact_id.id,
                 "default_amount": self.clearing_residual,
