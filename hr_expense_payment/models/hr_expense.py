@@ -2,7 +2,7 @@
 # Copyright 2021 Ecosoft Co., Ltd (http://ecosoft.co.th/)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class HrExpense(models.Model):
@@ -10,20 +10,26 @@ class HrExpense(models.Model):
 
     payment_ids = fields.Many2many(
         comodel_name="account.payment",
-        relation="payment_hr_expense_rel",
-        column1="expense_id",
-        column2="payment_id",
         string="Payments",
-        readonly=True,
-        copy=False,
+        compute="_compute_payment_ids",
+        # Employees read their expenses without accounting access; the
+        # reconciliation walk needs sudo.
+        compute_sudo=True,
+        search="_search_payment_ids",
+        help="Payments whose journal items have been reconciled with this "
+        "expense's journal entry.",
     )
 
-    def action_pay(self):
-        """Pass the expense ids to the payment wizard so created payments
-        back-link here."""
-        action = super().action_pay()
-        if action and isinstance(action, dict):
-            ctx = dict(action.get("context") or {})
-            ctx["hr_expense_ids"] = self.ids
-            action["context"] = ctx
-        return action
+    @api.depends(
+        "account_move_id.line_ids.matched_debit_ids",
+        "account_move_id.line_ids.matched_credit_ids",
+    )
+    def _compute_payment_ids(self):
+        for expense in self:
+            expense.payment_ids = expense.account_move_id._get_reconciled_payments()
+
+    def _search_payment_ids(self, operator, value):
+        if operator not in ("in", "="):
+            return NotImplemented
+        payments = self.env["account.payment"].browse(value)
+        return [("id", "in", payments.reconciled_expense_ids.ids)]

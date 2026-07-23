@@ -2,18 +2,37 @@
 # Copyright 2021 Ecosoft Co., Ltd (http://ecosoft.co.th/)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class AccountPayment(models.Model):
     _inherit = "account.payment"
 
-    expense_ids = fields.Many2many(
+    # Core's own expense_ids (related to move_id.expense_ids) only covers
+    # company-paid expenses; this covers the reimbursement direction, derived
+    # from reconciliation like core's reconciled_bill_ids.
+    reconciled_expense_ids = fields.Many2many(
         comodel_name="hr.expense",
-        relation="payment_hr_expense_rel",
-        column1="payment_id",
-        column2="expense_id",
-        string="Expenses",
-        readonly=True,
-        copy=False,
+        string="Reimbursed Expenses",
+        compute="_compute_reconciled_expense_ids",
+        compute_sudo=True,
+        search="_search_reconciled_expense_ids",
+        help="Employee-paid expenses whose journal items have been reconciled "
+        "with this payment.",
     )
+
+    @api.depends(
+        "move_id.line_ids.matched_debit_ids",
+        "move_id.line_ids.matched_credit_ids",
+    )
+    def _compute_reconciled_expense_ids(self):
+        for payment in self:
+            payment.reconciled_expense_ids = (
+                payment.move_id._get_reconciled_amls().move_id.expense_ids
+            )
+
+    def _search_reconciled_expense_ids(self, operator, value):
+        if operator not in ("in", "="):
+            return NotImplemented
+        expenses = self.env["hr.expense"].browse(value)
+        return [("id", "in", expenses.payment_ids.ids)]

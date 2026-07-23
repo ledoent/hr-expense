@@ -3,7 +3,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="Docutils: https://docutils.sourceforge.io/" />
-<title>HR Expense Payment</title>
+<title>README.rst</title>
 <style type="text/css">
 
 /*
@@ -375,11 +375,20 @@ ul.auto-toc {
 !! source digest: sha256:5517c634f0be5269334c9330a559431ffb4ee03d0b2a1b7fcf65c70a1976ef95
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -->
 <p><a class="reference external image-reference" href="https://odoo-community.org/page/development-status"><img alt="Beta" src="https://img.shields.io/badge/maturity-Beta-yellow.png" /></a> <a class="reference external image-reference" href="http://www.gnu.org/licenses/agpl-3.0-standalone.html"><img alt="License: AGPL-3" src="https://img.shields.io/badge/license-AGPL--3-blue.png" /></a> <a class="reference external image-reference" href="https://github.com/OCA/hr-expense/tree/19.0/hr_expense_payment"><img alt="OCA/hr-expense" src="https://img.shields.io/badge/github-OCA%2Fhr--expense-lightgray.png?logo=github" /></a> <a class="reference external image-reference" href="https://translation.odoo-community.org/projects/hr-expense-19-0/hr-expense-19-0-hr_expense_payment"><img alt="Translate me on Weblate" src="https://img.shields.io/badge/weblate-Translate%20me-F47D42.png" /></a> <a class="reference external image-reference" href="https://runboat.odoo-community.org/builds?repo=OCA/hr-expense&amp;target_branch=19.0"><img alt="Try me on Runboat" src="https://img.shields.io/badge/runboat-Try%20me-875A7B.png" /></a></p>
-<p>This module links each employee expense to the payment(s) that settled
-it. When you Register Payment on a posted employee-paid expense, the
-resulting payment back-links to the source expense, and vice versa. A
-post-install hook backfills the link for payments made before the module
-was installed.</p>
+<p>This module links each employee-paid expense to the payment(s) that
+settled it, in both directions: <tt class="docutils literal">hr.expense.payment_ids</tt> and
+<tt class="docutils literal">account.payment.reconciled_expense_ids</tt>.</p>
+<p>The link is computed from the reconciliation between the expense’s
+journal entry and the payment’s journal items — the same way core
+derives <tt class="docutils literal">reconciled_bill_ids</tt> on payments. It therefore always
+reflects the current accounting state (partial payments included), needs
+no manual bookkeeping, and covers payments however they were registered
+(expense’s Register Payment button, the journal entry’s own button, or
+manual reconciliation).</p>
+<p>Odoo 19.0 core’s <tt class="docutils literal">account.payment.expense_ids</tt> only covers
+company-paid expenses (whose journal entry <em>is</em> the payment’s move);
+this module covers the employee-reimbursement direction that core does
+not track.</p>
 <p><strong>Table of contents</strong></p>
 <div class="contents local topic" id="contents">
 <ul class="simple">
