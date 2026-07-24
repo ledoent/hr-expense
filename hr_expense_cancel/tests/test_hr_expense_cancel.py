@@ -42,8 +42,20 @@ class TestHrExpenseCancel(TestExpenseCommon):
         self.post_expenses_with_wizard(self.expense)
         wizard = self._get_payment_wizard()
         wizard.action_create_payments()
-        payments = self.expense.account_move_id._get_reconciled_payments()
+        payments = self.expense.account_move_id.reconciled_payment_ids
         self.assertTrue(payments)
+        self.expense.action_reset()
+        self.assertEqual(set(payments.mapped("state")), {"canceled"})
+        self.assertEqual(self.expense.state, "draft")
+
+    def test_action_reset_cancels_unreconciled_wizard_payment(self):
+        """Reset still cancels a wizard payment whose reconciliation was
+        removed: it stays linked through core's matched_payment_ids."""
+        self.post_expenses_with_wizard(self.expense)
+        wizard = self._get_payment_wizard()
+        wizard.action_create_payments()
+        payments = self.expense.account_move_id.reconciled_payment_ids
+        self.expense.account_move_id.line_ids.remove_move_reconcile()
         self.expense.action_reset()
         self.assertEqual(set(payments.mapped("state")), {"canceled"})
         self.assertEqual(self.expense.state, "draft")

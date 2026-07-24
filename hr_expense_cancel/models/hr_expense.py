@@ -12,8 +12,9 @@ class HrExpense(models.Model):
         guard passes, then let super reset the expense."""
         for expense in self:
             moves = expense.sudo().account_move_id
-            # Reconciliation-derived, partial-inclusive (core helper).
-            payments = moves._get_reconciled_payments().filtered(
+            # reconciled_payment_ids also covers wizard payments that have
+            # no journal entry yet (matched_payment_ids union).
+            payments = moves.reconciled_payment_ids.filtered(
                 lambda p: p.state != "canceled"
             )
             # Cross-module reconciliation: vendor bills made by
