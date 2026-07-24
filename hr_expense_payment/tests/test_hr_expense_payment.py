@@ -81,11 +81,42 @@ class TestHrExpensePayment(TestExpenseCommon):
         self.assertEqual(expense_2.payment_ids, payment)
         self.assertEqual(payment.reconciled_expense_ids, expenses)
 
-    def test_unreconcile_dissolves_link(self):
-        """Removing the reconciliation clears both sides of the link."""
+    def test_unreconcile_keeps_wizard_link(self):
+        """Wizard-registered payments stay linked after unreconciling, via
+        core's stored matched_payment_ids (reconciled_payment_ids semantics)."""
         wizard = self._get_payment_wizard(self.expense)
         wizard.action_create_payments()
         payment = self.expense.payment_ids
+        self.expense.account_move_id.line_ids.remove_move_reconcile()
+        self.assertEqual(self.expense.payment_ids, payment)
+        self.assertIn(self.expense, payment.reconciled_expense_ids)
+
+    def test_manual_reconcile_link_follows_reconciliation(self):
+        """A manually created and reconciled payment links through the
+        reconciliation only, so unreconciling dissolves it."""
+        payment = self.env["account.payment"].create(
+            {
+                "payment_type": "outbound",
+                "partner_type": "supplier",
+                "partner_id": self.expense.employee_id.work_contact_id.id,
+                "amount": self.expense.total_amount,
+                "journal_id": self.company_data["default_journal_bank"].id,
+                # An outstanding account so the payment generates a move.
+                "payment_method_line_id": self.outbound_payment_method_line.id,
+            }
+        )
+        payment.action_post()
+        self.assertTrue(payment.move_id)
+        self.assertFalse(self.expense.payment_ids)
+        lines = (
+            payment.move_id.line_ids + self.expense.account_move_id.line_ids
+        ).filtered(
+            lambda line: line.account_id.account_type == "liability_payable"
+            and not line.reconciled
+        )
+        lines.reconcile()
+        self.assertEqual(self.expense.payment_ids, payment)
+        self.assertIn(self.expense, payment.reconciled_expense_ids)
         self.expense.account_move_id.line_ids.remove_move_reconcile()
         self.assertFalse(self.expense.payment_ids)
         self.assertFalse(payment.reconciled_expense_ids)

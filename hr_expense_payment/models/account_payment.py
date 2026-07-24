@@ -9,27 +9,28 @@ class AccountPayment(models.Model):
     _inherit = "account.payment"
 
     # Core's own expense_ids (related to move_id.expense_ids) only covers
-    # company-paid expenses; this covers the reimbursement direction, derived
-    # from reconciliation like core's reconciled_bill_ids.
+    # company-paid expenses; this exposes the reimbursement direction from
+    # core's move-level link fields (invoice_ids / reconciled_bill_ids).
     reconciled_expense_ids = fields.Many2many(
         comodel_name="hr.expense",
         string="Reimbursed Expenses",
         compute="_compute_reconciled_expense_ids",
         compute_sudo=True,
         search="_search_reconciled_expense_ids",
-        help="Employee-paid expenses whose journal items have been reconciled "
-        "with this payment.",
+        help="Employee-paid expenses whose journal entry is linked to this "
+        "payment, by reconciliation or by the payment register.",
     )
 
     @api.depends(
+        "invoice_ids",
         "move_id.line_ids.matched_debit_ids",
         "move_id.line_ids.matched_credit_ids",
     )
     def _compute_reconciled_expense_ids(self):
         for payment in self:
             payment.reconciled_expense_ids = (
-                payment.move_id._get_reconciled_amls().move_id.expense_ids
-            )
+                payment.invoice_ids | payment.reconciled_bill_ids
+            ).expense_ids
 
     def _search_reconciled_expense_ids(self, operator, value):
         if operator not in ("in", "="):

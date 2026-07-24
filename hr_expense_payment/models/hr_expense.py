@@ -16,17 +16,21 @@ class HrExpense(models.Model):
         # reconciliation walk needs sudo.
         compute_sudo=True,
         search="_search_payment_ids",
-        help="Payments whose journal items have been reconciled with this "
-        "expense's journal entry.",
+        help="Payments linked to this expense's journal entry, whether "
+        "reconciled with it or matched by the payment register.",
     )
 
     @api.depends(
         "account_move_id.line_ids.matched_debit_ids",
         "account_move_id.line_ids.matched_credit_ids",
+        "account_move_id.matched_payment_ids",
     )
     def _compute_payment_ids(self):
+        # Core's reconciled_payment_ids unions the reconciliation walk with
+        # matched_payment_ids, so wizard-registered payments without a journal
+        # entry are included too.
         for expense in self:
-            expense.payment_ids = expense.account_move_id._get_reconciled_payments()
+            expense.payment_ids = expense.account_move_id.reconciled_payment_ids
 
     def _search_payment_ids(self, operator, value):
         if operator not in ("in", "="):
