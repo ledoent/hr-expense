@@ -1,5 +1,7 @@
-The module adds no menu or view of its own; it exposes two searchable fields
-that other modules and custom views build on:
+The expense form shows the payments that settled it, and the payment form
+shows the expenses it reimbursed; both appear only once there is something to
+show. Under them are two searchable fields that other modules and custom
+views can build on:
 
 - `hr.expense.payment_ids` — the payments linked to the expense's journal
   entry, whether by reconciliation or by the payment register.
