@@ -3,9 +3,21 @@
 # Copyright 2024 Tecnativa - Víctor Martínez
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
+import importlib.util
+from pathlib import Path
+
 from odoo.tests import Form, tagged
 
 from odoo.addons.hr_expense.tests.common import TestExpenseCommon
+
+
+def _load_post_migration():
+    """Import the 19.0.1.0.0 upgrade script by path (not an importable module)."""
+    path = Path(__file__).parents[1] / "migrations" / "19.0.1.0.0" / "post-migration.py"
+    spec = importlib.util.spec_from_file_location("hr_expense_payment_post_mig", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 @tagged("-at_install", "post_install")
@@ -120,6 +132,82 @@ class TestHrExpensePayment(TestExpenseCommon):
         self.expense.account_move_id.line_ids.remove_move_reconcile()
         self.assertFalse(self.expense.payment_ids)
         self.assertFalse(payment.reconciled_expense_ids)
+
+    def test_core_leaves_the_reimbursement_direction_untracked(self):
+        """Why the module exists on 19.0.
+
+        Core links a payment to expenses only when the payment's own journal
+        entry *is* the expense entry (company-paid). For an employee
+        reimbursement the two entries are distinct and reconciled, so core
+        stops at the entry level: no field on hr.expense or account.payment
+        reaches the other side.
+        """
+        wizard = self._get_payment_wizard(self.expense)
+        wizard.action_create_payments()
+        payment = self.expense.payment_ids
+        # Core, payment side: empty — the payment's move is not the expense's.
+        self.assertFalse(payment.expense_ids)
+        self.assertNotEqual(payment.move_id, self.expense.account_move_id)
+        # Expense side: the only field reaching account.payment is this
+        # module's own, and it is derived rather than stored.
+        field = self.env["hr.expense"]._fields["payment_ids"]
+        self.assertEqual(field.compute, "_compute_payment_ids")
+        self.assertFalse(field.store)
+        # The relationship exists in core only at entry level.
+        self.assertIn(payment, self.expense.account_move_id.reconciled_payment_ids)
+
+    def test_migration_carries_legacy_sheet_links(self):
+        """The 19.0.1.0.0 upgrade script carries 18.0 rows onto the entries.
+
+        Simulates a database upgraded from 18.0: the orphaned
+        `payment_expense_sheet_rel` table, core's `hr.expense.former_sheet_id`
+        filled by OpenUpgrade, and a link whose reconciliation no longer
+        exists (so nothing in the accounting data can rebuild it).
+        """
+        payment = self.env["account.payment"].create(
+            {
+                "payment_type": "outbound",
+                "partner_type": "supplier",
+                "partner_id": self.expense.employee_id.work_contact_id.id,
+                "amount": self.expense.total_amount,
+                "journal_id": self.company_data["default_journal_bank"].id,
+                "payment_method_line_id": self.outbound_payment_method_line.id,
+            }
+        )
+        payment.action_post()
+        # Nothing ties the two together today.
+        self.assertFalse(self.expense.payment_ids)
+        legacy_sheet_id = 4242
+        # former_sheet_id is a core 19.0 field; OpenUpgrade renames 18.0's
+        # hr_expense.sheet_id onto it, so it carries the old sheet ids.
+        self.expense.former_sheet_id = legacy_sheet_id
+        self.expense.flush_recordset()
+        self.env.cr.execute(
+            """
+            CREATE TABLE payment_expense_sheet_rel (
+                payment_id integer NOT NULL,
+                sheet_id integer NOT NULL,
+                PRIMARY KEY (payment_id, sheet_id)
+            );
+            INSERT INTO payment_expense_sheet_rel VALUES (%s, %s);
+            """,
+            (payment.id, legacy_sheet_id),
+        )
+        post_migration = _load_post_migration()
+        post_migration.migrate(self.env.cr, "19.0.1.0.0")
+        self.env.invalidate_all()
+        self.assertEqual(self.expense.payment_ids, payment)
+        self.assertIn(self.expense, payment.reconciled_expense_ids)
+        # Running it again does not duplicate the link.
+        post_migration.migrate(self.env.cr, "19.0.1.0.0")
+        self.env.invalidate_all()
+        self.assertEqual(self.expense.payment_ids, payment)
+
+    def test_migration_is_a_noop_without_the_legacy_table(self):
+        """On a fresh 19.0 install the script does nothing and does not fail."""
+        post_migration = _load_post_migration()
+        post_migration.migrate(self.env.cr, "19.0.1.0.0")
+        self.assertFalse(self.expense.payment_ids)
 
     def test_search_payment_ids(self):
         """Both computed fields are searchable."""
