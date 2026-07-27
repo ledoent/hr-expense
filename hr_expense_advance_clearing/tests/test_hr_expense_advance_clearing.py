@@ -232,6 +232,23 @@ class TestHrExpenseAdvanceClearing(TestExpenseCommon):
         )
         self.assertAlmostEqual(sum(advance_gl.mapped("amount_residual")), 400.0)
 
+    def test_clearing_uses_configured_clearing_journal(self):
+        """The company's clearing journal, when set, wins over the fallback."""
+        clearing_journal = self.env["account.journal"].create(
+            {
+                "name": "Clearing Other",
+                "code": "CLRO",
+                "type": "general",
+                "company_id": self.env.company.id,
+            }
+        )
+        self.env.company.clearing_journal_id = clearing_journal
+        advance = self._new_advance(500.0)
+        self._post(advance)
+        clearing = self._new_clearing(advance, 200.0)
+        self._post(clearing)
+        self.assertEqual(clearing.account_move_id.journal_id, clearing_journal)
+
     def test_clearing_over_advance_splits_to_payable(self):
         """When the clearing exceeds the advance, the excess books to the
         employee payable so it can still be reimbursed."""

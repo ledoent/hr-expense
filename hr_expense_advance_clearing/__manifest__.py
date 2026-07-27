@@ -15,6 +15,7 @@
         "views/hr_expense_views.xml",
         "views/hr_employee_views.xml",
         "views/hr_employee_public_views.xml",
+        "views/res_config_settings_views.xml",
     ],
     "installable": True,
 }

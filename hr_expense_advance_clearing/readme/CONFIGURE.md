@@ -12,3 +12,8 @@ Note:
   data
 - Employee Advance account code, if not already exists, you can create
   one. Use type = Current Asset and check Allow Reconciliation.
+
+Optionally set a dedicated journal for clearing entries in *Expenses \>
+Configuration \> Settings \> Default Clearing Journal* (Miscellaneous
+journals only). When unset, the first general journal of the company is
+used.

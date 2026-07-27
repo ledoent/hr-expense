@@ -26,7 +26,9 @@ class AccountMove(models.Model):
                 continue
             if move.journal_id.type == "general":
                 continue
-            general = self.env["account.journal"].search(
+            general = move.company_id.clearing_journal_id or self.env[
+                "account.journal"
+            ].search(
                 [("type", "=", "general"), ("company_id", "=", move.company_id.id)],
                 limit=1,
             )
