@@ -32,45 +32,45 @@ Hr expense cancel
 
 |badge1| |badge2| |badge3| |badge4| |badge5|
 
-This module lets you reset a posted employee expense back to draft. It
-draft-cancels the linked payments and unreconciles their journal lines
-before core reverses the expense's move. Reconciliations created by
-related modules (such as bills from ``hr_expense_invoice``) are
-cancelled in step.
+This module lets you reset a posted employee expense back to draft,
+which core refuses while a posted journal entry is attached. It
+draft-cancels the payments still reconciled with that entry,
+unreconciles their journal lines and deletes the entry. Reconciliations
+created by related modules (such as bills from ``hr_expense_invoice``)
+are cancelled in step.
+
+A payment that was already unreconciled from the expense before the
+reset is left untouched, because nothing links it to the expense any
+more.
 
 **Table of contents**
 
 .. contents::
    :local:
 
-Installation
-============
-
-It's assumed that for each expense sheet, the *payments* that are
-reconciled with their *journal entry* were created and reconciled by the
-*Expense Tracker* module automatically. Therefore, when this module is
-installed, these payments will automatically be associated with said
-expense sheet so that they can be deleted in case the expense sheet is
-canceled.
-
 Usage
 =====
 
 To use this module, you need to:
 
-1. Go to *Expenses -> My Expenses -> Expenses to Submit* and create a
-   new *Expense* with *Employee (to reimburse)* checked on the field
-   *Payment By*
-2. Click on *Submit to Manager* button
-3. Click on *Approve* button
-4. Click on *Post Journal Entries* button
-5. Click on *Register Payment* button, fill in the data of the wizard
-   and click on *Validate* button
-6. After that, the *Expense report* will have an associated journal
-   entry reconciled with a payment
-7. Click on *Cancel* button
-8. The *Expense report* will be set to *Submitted* state; the journal
-   entry and the payment will be deleted
+1. Go to *Expenses* and create a new *Expense* paid by *Employee (to
+   reimburse)*
+2. Submit and approve it, then click on *Post Journal Entries*
+3. Click on *Register Payment*, fill in the wizard and validate: the
+   expense's journal entry is now reconciled with a payment
+4. Click on *Reset to Draft*
+5. The expense goes back to *Draft*; the payment is cancelled and the
+   journal entry deleted
+
+If the payment was unreconciled from the expense beforehand, the reset
+still returns the expense to *Draft* but leaves that payment *In
+Process* for the accountant to settle. Its *Cancel* button is hidden in
+that state, so reset the payment to draft first if you want to cancel
+it.
+
+With expense reports installed, resetting a report removes all of its
+journal entries together. A single expense of a report that has several
+entries cannot be reset on its own.
 
 Bug Tracker
 ===========
