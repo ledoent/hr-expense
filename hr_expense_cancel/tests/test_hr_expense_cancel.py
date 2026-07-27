@@ -36,6 +36,15 @@ class TestHrExpenseCancel(TestExpenseCommon):
         self.expense.action_reset()
         self.assertEqual(self.expense.state, "draft")
 
+    def test_employee_reset_without_move_needs_no_accounting_access(self):
+        """Employee reset of a moveless expense touches no accounting model."""
+        expense = self.create_expenses(
+            {"payment_mode": "own_account", "total_amount_currency": 42.0}
+        )
+        expense.action_submit()
+        expense.with_user(self.expense_user_employee).action_reset()
+        self.assertEqual(expense.state, "draft")
+
     def test_action_reset_paid_own_account(self):
         """Reset on a paid employee expense draft-cancels the payment +
         unreconciles before reversing the move."""

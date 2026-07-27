@@ -9,28 +9,24 @@ class HrExpense(models.Model):
 
     def action_reset(self):
         """Tear down linked payments and the posted move so core's reset
-        guard passes, then let super reset the expense."""
+        guard passes, then let super reset the expense. Runs with the
+        caller's rights, as in 18.0."""
         for expense in self:
-            moves = expense.sudo().account_move_id
-            # reconciled_payment_ids also covers wizard payments that have
-            # no journal entry yet (matched_payment_ids union).
+            moves = expense.account_move_id
+            if not moves:
+                continue
             payments = moves.reconciled_payment_ids.filtered(
                 lambda p: p.state != "canceled"
             )
-            # Cross-module reconciliation: vendor bills made by
-            # hr_expense_invoice share full_reconcile_id with the receipt.
             self._remove_reconcile_hr_invoice(moves)
-            # Unreconcile payment lines from receipt lines for own_account.
             if expense.payment_mode == "own_account":
                 self._remove_move_reconcile(payments, moves)
             payments.action_draft_cancel()
-            # Detach + cancel + unlink the move so super's guard passes.
-            if moves:
-                non_draft = moves.filtered(lambda m: m.state != "draft")
-                if non_draft:
-                    non_draft.button_draft()
-                    non_draft.button_cancel()
-                moves.with_context(force_delete=True).unlink()
+            non_draft = moves.filtered(lambda m: m.state != "draft")
+            if non_draft:
+                non_draft.button_draft()
+                non_draft.button_cancel()
+            moves.with_context(force_delete=True).unlink()
         return super().action_reset()
 
     def _remove_reconcile_hr_invoice(self, account_moves):
