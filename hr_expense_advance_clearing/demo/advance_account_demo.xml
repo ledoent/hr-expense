@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Copyright 2026 Ledo
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+    <!-- The module ships the Employee Advance product but deliberately leaves
+         its expense account unset: the right account is chart- and
+         company-specific, so CONFIGURE.md asks the user to pick one.
+
+         That makes the module unusable on a fresh demo database until someone
+         configures it, which is how reviewers first meet it on runboat. This
+         demo record creates a reconcilable current-asset account and wires it
+         up, so the advance/clearing flow works out of the box on a demo build.
+         It is demo-only and never loads in production. -->
+    <record id="demo_account_employee_advance" model="account.account">
+        <field name="name">Employee Advance (demo)</field>
+        <field name="code">100999</field>
+        <field name="account_type">asset_current</field>
+        <field name="reconcile" eval="True" />
+    </record>
+
+    <record id="product_emp_advance" model="product.product">
+        <field name="property_account_expense_id" ref="demo_account_employee_advance" />
+    </record>
+</odoo>
