@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Copyright 2026 Ledo
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+    <record id="view_hr_expense_sheet_form" model="ir.ui.view">
+        <field name="name">hr.expense.sheet.form.advance.clearing</field>
+        <field name="model">hr.expense.sheet</field>
+        <field name="inherit_id" ref="hr_expense_sheet.view_hr_expense_sheet_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <!-- in_payment counts as paid here: the advance is out the
+                     door once its payment is registered, and journals with
+                     outstanding accounts hold sheets at in_payment until
+                     bank reconciliation. -->
+                <button
+                    type="object"
+                    name="action_clear_advance"
+                    string="Clear Advance"
+                    class="oe_highlight"
+                    invisible="expense_type != 'advance' or state not in ('in_payment', 'paid') or advance_residual &lt;= 0.0"
+                />
+                <button
+                    type="object"
+                    name="action_return_advance"
+                    string="Return Advance"
+                    invisible="expense_type != 'advance' or state not in ('in_payment', 'paid') or advance_residual &lt;= 0.0"
+                    groups="account.group_account_user"
+                />
+            </xpath>
+            <div name="button_box" position="inside">
+                <button
+                    type="object"
+                    name="action_view_clearing_sheets"
+                    class="oe_stat_button"
+                    icon="fa-money"
+                    invisible="clearing_count == 0"
+                >
+                    <field name="clearing_count" widget="statinfo" string="Clearings" />
+                </button>
+            </div>
+            <field name="employee_id" position="after">
+                <field name="expense_type" readonly="1" />
+                <field
+                    name="advance_sheet_id"
+                    readonly="1"
+                    invisible="not advance_sheet_id"
+                />
+                <field name="advance_residual" invisible="expense_type != 'advance'" />
+            </field>
+        </field>
+    </record>
+</odoo>
