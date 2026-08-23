@@ -1,0 +1,2 @@
+# DO NOT MERGE — temporary pin until OCA/hr-expense#378 lands.
+odoo-addon-hr_expense_sheet @ git+https://github.com/OCA/hr-expense.git@refs/pull/378/head#subdirectory=hr_expense_sheet
