@@ -1,4 +1,7 @@
 
+[![Support the OCA](https://odoo-community.org/readme-banner-image)](https://odoo-community.org/get-involved?utm_source=repo-readme)
+
+# hr-expense
 [![Runboat](https://img.shields.io/badge/runboat-Try%20me-875A7B.png)](https://runboat.odoo-community.org/builds?repo=OCA/hr-expense&target_branch=19.0)
 [![Pre-commit Status](https://github.com/OCA/hr-expense/actions/workflows/pre-commit.yml/badge.svg?branch=19.0)](https://github.com/OCA/hr-expense/actions/workflows/pre-commit.yml?query=branch%3A19.0)
 [![Build Status](https://github.com/OCA/hr-expense/actions/workflows/test.yml/badge.svg?branch=19.0)](https://github.com/OCA/hr-expense/actions/workflows/test.yml?query=branch%3A19.0)
@@ -6,8 +9,6 @@
 [![Translation Status](https://translation.odoo-community.org/widgets/hr-expense-19-0/-/svg-badge.svg)](https://translation.odoo-community.org/engage/hr-expense-19-0/?utm_source=widget)
 
 <!-- /!\ do not modify above this line -->
-
-# hr-expense
 
 hr-expense
 
@@ -17,7 +18,11 @@ hr-expense
 
 [//]: # (addons)
 
-This part will be replaced when running the oca-gen-addons-table script from OCA/maintainer-tools.
+Available addons
+----------------
+addon | version | maintainers | summary
+--- | --- | --- | ---
+[hr_expense_sheet](hr_expense_sheet/) | 19.0.1.0.0 | <a href='https://github.com/victoralmau'><img src='https://github.com/victoralmau.png' width='32' height='32' style='border-radius:50%;' alt='victoralmau'/></a> | Hr expense sheet
 
 [//]: # (end addons)
 
